@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NeuroFleex Auth</title>
+
+  <style>
+    :root { color-scheme: dark; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.35);
+    }
+
+    .title {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .brand {
+      font-size: 20px;
+      font-weight: 600;
+      color: #93c5fd;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: #0d1424;
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    h2 {
+      margin-bottom: 12px;
+    }
+
+    form {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #e2e8f0;
+    }
+
+    /* ✅ FIXED ROLE ALIGNMENT */
+    .roles {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .role-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .role-option input[type="radio"] {
+      margin: 0;
+      accent-color: #2563eb;
+    }
+
+    button {
+      margin-top: 8px;
+      padding: 10px;
+      background: #1d4ed8;
+      border: 1px solid #2563eb;
+      color: white;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .error {
+      color: #fca5a5;
+      font-size: 12px;
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    @media (max-width: 720px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="title">
+      <div class="brand">NeuroFleetX</div>
+      <div class="hint">Log In or Register</div>
+    </div>
+
+    <div id="root"></div>
+  </div>
+
+  <!-- React CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const ROLES = ["Commuter", "Operator", "Admin"];
+    const KEY = "neurofleex_users";
+
+    const getUsers = () => JSON.parse(localStorage.getItem(KEY) || "[]");
+    const setUsers = users => localStorage.setItem(KEY, JSON.stringify(users));
+
+    function Input({ label, type, value, onChange }) {
+      return (
+        <div>
+          <label>{label}</label>
+          <input type={type} value={value} onChange={e => onChange(e.target.value)} />
+        </div>
+      );
+    }
+
+    function RoleChooser({ value, onChange }) {
+      return (
+        <div className="roles">
+          <label>Role</label>
+          {ROLES.map(role => (
+            <label key={role} className="role-option">
+              <input
+                type="radio"
+                value={role}
+                checked={value === role}
+                onChange={() => onChange(role)}
+              />
+              {role}
+            </label>
+          ))}
+        </div>
+      );
+    }
+
+    function RegisterForm({ onRegistered }) {
+      const [email, setEmail] = useState("");
+      const [password, setPassword] = useState("");
+      const [role, setRole] = useState("Commuter");
+      const [error, setError] = useState("");
+
+      function submit(e) {
+        e.preventDefault();
+        setError("");
+
+        if (!email.includes("@")) return setError("Invalid email");
+        if (password.length < 6) return setError("Password must be 6+ characters");
+
+        const users = getUsers();
+        if (users.find(u => u.email === email)) {
+          return setError("Email already registered");
+        }
+
+        const user = { email, password, role };
+        setUsers([...users, user]);
+        onRegistered(user);
+      }
+
+      return (
+        <div className="card">
+          <h2>REGISTER</h2>
+          <form onSubmit={submit}>
+            <Input label="Email" type="email" value={email} onChange={setEmail} />
+            <Input label="Password" type="password" value={password} onChange={setPassword} />
+            <RoleChooser value={role} onChange={setRole} />
+            {error && <div className="error">{error}</div>}
+            <button type="submit">Register</button>
+          </form>
+        </div>
+      );
+    }
+
+    function LoginForm({ onLogin }) {
+      const [email, setEmail] = useState("");
+      const [password, setPassword] = useState("");
+      const [error, setError] = useState("");
+
+      function submit(e) {
+        e.preventDefault();
+        setError("");
+
+        const user = getUsers().find(u => u.email === email);
+        if (!user) return setError("Account not found");
+        if (user.password !== password) return setError("Incorrect password");
+
+        onLogin(user);
+      }
+
+      return (
+        <div className="card">
+          <h2>LOGIN</h2>
+          <form onSubmit={submit}>
+            <Input label="Email" type="email" value={email} onChange={setEmail} />
+            <Input label="Password" type="password" value={password} onChange={setPassword} />
+            {error && <div className="error">{error}</div>}
+            <button type="submit">Login</button>
+          </form>
+        </div>
+      );
+    }
+
+    function App() {
+      const [msg, setMsg] = useState("");
+
+      return (
+        <>
+          <div className="grid">
+            <LoginForm onLogin={u => setMsg(`Logged in as ${u.email}`)} />
+            <RegisterForm onRegistered={u => setMsg(`Registered ${u.email} as ${u.role}`)} />
+          </div>
+          {msg && <div className="hint">{msg}</div>}
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
